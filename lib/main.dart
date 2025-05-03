@@ -8,6 +8,28 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+final ThemeData sunnyTheme = ThemeData(
+  brightness: Brightness.light,
+  primaryColor: Colors.orange,
+  scaffoldBackgroundColor: Colors.yellow[50],
+  appBarTheme: AppBarTheme(
+    backgroundColor: Colors.orange,
+    foregroundColor: Colors.white,
+  ),
+);
+
+final ThemeData rainyTheme = ThemeData(
+  brightness: Brightness.light,
+  primaryColor: Colors.blue[900],
+  scaffoldBackgroundColor: Colors.blueGrey[50],
+  appBarTheme: AppBarTheme(
+    backgroundColor: Colors.blue[900],
+    foregroundColor: Colors.white,
+  ),
+);
+
+final ValueNotifier<ThemeData> themeNotifier = ValueNotifier(sunnyTheme);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform,);
@@ -17,34 +39,22 @@ void main() async {
 class WeatherlyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Weatherly',
-      theme: ThemeData(
-        brightness: Brightness.light,
-        primaryColor: Color(0xFF4A90E2),
-        scaffoldBackgroundColor: Color(0xFFF8F8FF),
-        fontFamily: 'Roboto',
-        textTheme: TextTheme(
-          titleLarge: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
-          bodyMedium: TextStyle(fontSize: 16, color: Colors.black54),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Color(0xFF4A90E2),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          ),
-        ),
-      ),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => HomeScreen(),
-        '/forecast': (context) => ForecastScreen(),
-        '/map': (context) => MapScreen(),
-        '/theme': (context) => ThemeSettingsScreen(),
-        '/community': (context) => CommunityScreen(),
-        '/alerts': (context) => AlertsScreen(),
+    return ValueListenableBuilder<ThemeData>(
+      valueListenable: themeNotifier,
+      builder: (_, theme, __) {
+        return MaterialApp(
+          title: 'Weatherly',
+          theme: theme,
+          initialRoute: '/',
+          routes: {
+            '/': (context) => HomeScreen(),
+            '/forecast': (context) => ForecastScreen(),
+            '/map': (context) => MapScreen(),
+            '/theme': (context) => ThemeSettingsScreen(),
+            '/community': (context) => CommunityScreen(),
+            '/alerts': (context) => AlertsScreen(),
+          },
+        );
       },
     );
   }
@@ -175,12 +185,29 @@ class ThemeSettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Theme Settings")),
+      appBar: AppBar(title: Text('Theme Settings')),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ListTile(title: Text("☀️ Sunny Theme")),
-          ListTile(title: Text("🌧️ Rainy Theme")),
-          ElevatedButton(onPressed: () {}, child: Text("Upload Custom Theme"))
+          ListTile(
+            leading: Icon(Icons.wb_sunny, color: Colors.orange),
+            title: Text("Sunny Theme"),
+            onTap: () => themeNotifier.value = sunnyTheme,
+          ),
+          ListTile(
+            leading: Icon(Icons.grain, color: Colors.blue[900]),
+            title: Text("Rainy Theme"),
+            onTap: () => themeNotifier.value = rainyTheme,
+          ),
+          SizedBox(height: 40),
+          Center(
+            child: ElevatedButton(
+              child: Text('Upload Custom Theme'),
+              onPressed: () {
+                // Future feature placeholder
+              },
+            ),
+          ),
         ],
       ),
     );
