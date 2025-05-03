@@ -5,6 +5,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -143,15 +145,31 @@ class _ForecastScreenState extends State<ForecastScreen> {
 }
 
 class MapScreen extends StatelessWidget {
+  final mapboxAccessToken = 'pk.eyJ1IjoiYWRuYW40MjMiLCJhIjoiY21hN2psbWtoMGdhbzJpb2J4dzkydnAyMSJ9.eixXQHgUPUzVzfxgRqLgXA';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Weather Map")),
-      body: Center(child: Text("🌍 Map View Coming Soon")),
+      body: FlutterMap(
+        options: MapOptions(
+          center: LatLng(33.7490, -84.3880), // Atlanta
+          zoom: 10,
+        ),
+        children: [
+          TileLayer(
+            urlTemplate:
+            'https://api.mapbox.com/styles/v1/$mapboxStyleId/tiles/256/{z}/{x}/{y}@2x?access_token=$mapboxAccessToken',
+            additionalOptions: {
+              'accessToken': mapboxAccessToken,
+              'styleId': mapboxStyleId,
+            },
+          ),
+        ],
+      ),
     );
   }
 }
-
 class ThemeSettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
