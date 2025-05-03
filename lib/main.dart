@@ -144,3 +144,40 @@ class CommunityScreen extends StatelessWidget {
     );
   }
 }
+
+class AlertsScreen extends StatefulWidget {
+  @override
+  _AlertsScreenState createState() => _AlertsScreenState();
+}
+
+class _AlertsScreenState extends State<AlertsScreen> {
+  bool rainAlert = false;
+  bool tempAlert = false;
+
+  void _updateAlerts() {
+    print("Rain alert: $rainAlert, Temp alert: $tempAlert");
+    // Example: You can push to Firestore or use Firebase Messaging here
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Personal Alerts")),
+      body: Column(
+        children: [
+          SwitchListTile(
+            title: Text("Alert me if it rains tomorrow"),
+            value: rainAlert,
+            onChanged: (val) => setState(() => rainAlert = val),
+          ),
+          SwitchListTile(
+            title: Text("Alert me if temp > 90°F"),
+            value: tempAlert,
+            onChanged: (val) => setState(() => tempAlert = val),
+          ),
+          ElevatedButton(onPressed: _updateAlerts, child: Text("Save Alerts"))
+        ],
+      ),
+    );
+  }
+}
