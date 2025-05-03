@@ -3,6 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,7 +17,24 @@ class WeatherlyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Weatherly',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: ThemeData(
+        brightness: Brightness.light,
+        primaryColor: Color(0xFF4A90E2),
+        scaffoldBackgroundColor: Color(0xFFF8F8FF),
+        fontFamily: 'Roboto',
+        textTheme: TextTheme(
+          titleLarge: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+          bodyMedium: TextStyle(fontSize: 16, color: Colors.black54),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xFF4A90E2),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          ),
+        ),
+      ),
       initialRoute: '/',
       routes: {
         '/': (context) => HomeScreen(),
@@ -39,30 +58,83 @@ class HomeScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text("🌤️ 72°F – Atlanta", style: TextStyle(fontSize: 24)),
+            SizedBox(height: 12),
             ElevatedButton(onPressed: () => Navigator.pushNamed(context, '/forecast'), child: Text("Forecast")),
+            SizedBox(height: 12),
             ElevatedButton(onPressed: () => Navigator.pushNamed(context, '/map'), child: Text("Map")),
+            SizedBox(height: 12),
             ElevatedButton(onPressed: () => Navigator.pushNamed(context, '/theme'), child: Text("Themes")),
+            SizedBox(height: 12),
             ElevatedButton(onPressed: () => Navigator.pushNamed(context, '/community'), child: Text("Community")),
+            SizedBox(height: 12),
             ElevatedButton(onPressed: () => Navigator.pushNamed(context, '/alerts'), child: Text("Alerts")),
           ],
+
         ),
       ),
     );
   }
 }
 
-class ForecastScreen extends StatelessWidget {
+class ForecastScreen extends StatefulWidget {
+  @override
+  _ForecastScreenState createState() => _ForecastScreenState();
+}
+
+class _ForecastScreenState extends State<ForecastScreen> {
+  List<dynamic> forecastList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchForecast();
+  }
+
+  Future<void> fetchForecast() async {
+    const apiKey = '8377ee3a600148eaa8310845250305';
+    const city = 'Atlanta';
+    final url =
+        'https://api.weatherapi.com/v1/forecast.json?key=$apiKey&q=$city&days=7&aqi=no&alerts=no';
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          forecastList = data['forecast']['forecastday'];
+        });
+      } else {
+        print("Failed to fetch forecast. Status: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Fetch error: $e");
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Forecast")),
-      body: ListView.builder(
-        itemCount: 7,
+      body: forecastList.isEmpty
+          ? Center(child: CircularProgressIndicator())
+          : ListView.builder(
+        itemCount: forecastList.length,
         itemBuilder: (context, index) {
+          final day = forecastList[index];
+          final date = day['date'];
+          final condition = day['day']['condition']['text'];
+          final iconUrl = "https:${day['day']['condition']['icon']}";
+          final tempMin = day['day']['mintemp_f'];
+          final tempMax = day['day']['maxtemp_f'];
+
           return ListTile(
-            leading: Icon(Icons.cloud),
-            title: Text("Day $index – 70°F - 80°F"),
-            subtitle: Text("Partly Cloudy"),
+            leading: Image.network(iconUrl, width: 40),
+            title: Text("$date – $tempMin°F to $tempMax°F"),
+            subtitle: Text(condition),
           );
         },
       ),
