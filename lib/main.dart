@@ -146,6 +146,7 @@ class _ForecastScreenState extends State<ForecastScreen> {
 
 class MapScreen extends StatelessWidget {
   final mapboxAccessToken = 'pk.eyJ1IjoiYWRuYW40MjMiLCJhIjoiY21hN2psbWtoMGdhbzJpb2J4dzkydnAyMSJ9.eixXQHgUPUzVzfxgRqLgXA';
+  final mapboxStyleId = 'mapbox/streets-v11';
 
   @override
   Widget build(BuildContext context) {
