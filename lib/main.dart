@@ -16,6 +16,14 @@ final ThemeData sunnyTheme = ThemeData(
     backgroundColor: Colors.orange,
     foregroundColor: Colors.white,
   ),
+  elevatedButtonTheme: ElevatedButtonThemeData(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Colors.orange,
+      foregroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+    ),
+  ),
 );
 
 final ThemeData rainyTheme = ThemeData(
@@ -26,8 +34,15 @@ final ThemeData rainyTheme = ThemeData(
     backgroundColor: Colors.blue[900],
     foregroundColor: Colors.white,
   ),
+  elevatedButtonTheme: ElevatedButtonThemeData(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Colors.blue[900],
+      foregroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+    ),
+  ),
 );
-
 final ValueNotifier<ThemeData> themeNotifier = ValueNotifier(sunnyTheme);
 
 void main() async {
@@ -60,7 +75,53 @@ class WeatherlyApp extends StatelessWidget {
   }
 }
 
-class HomeScreen extends StatelessWidget {
+Future<Map<String, dynamic>?> fetchCurrentWeather() async {
+  const apiKey = '8377ee3a600148eaa8310845250305';
+  const city = 'Atlanta';
+  final url = 'https://api.weatherapi.com/v1/current.json?key=$apiKey&q=$city';
+
+  try {
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return {
+        'temp': data['current']['temp_f'],
+        'icon': "https:${data['current']['condition']['icon']}",
+        'desc': data['current']['condition']['text'],
+      };
+    }
+  } catch (e) {
+    print('Weather fetch error: $e');
+  }
+  return null;
+}
+
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  String temperatureText = "Loading...";
+  String iconUrl = '';
+  String city = 'Atlanta';
+
+  @override
+  void initState() {
+    super.initState();
+    loadWeather();
+  }
+
+  void loadWeather() async {
+    final weather = await fetchCurrentWeather();
+    if (weather != null) {
+      setState(() {
+        temperatureText = "${weather['temp']}°F – $city";
+        iconUrl = weather['icon'];
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -69,24 +130,54 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text("🌤️ 72°F – Atlanta", style: TextStyle(fontSize: 24)),
-            SizedBox(height: 12),
-            ElevatedButton(onPressed: () => Navigator.pushNamed(context, '/forecast'), child: Text("Forecast")),
-            SizedBox(height: 12),
-            ElevatedButton(onPressed: () => Navigator.pushNamed(context, '/map'), child: Text("Map")),
-            SizedBox(height: 12),
-            ElevatedButton(onPressed: () => Navigator.pushNamed(context, '/theme'), child: Text("Themes")),
-            SizedBox(height: 12),
-            ElevatedButton(onPressed: () => Navigator.pushNamed(context, '/community'), child: Text("Community")),
-            SizedBox(height: 12),
-            ElevatedButton(onPressed: () => Navigator.pushNamed(context, '/alerts'), child: Text("Alerts")),
-          ],
+            if (iconUrl.isNotEmpty)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.network(iconUrl, width: 40),
+                  SizedBox(width: 8),
+                  Text(temperatureText, style: TextStyle(fontSize: 24)),
+                ],
+              )
+            else
+              Text(temperatureText, style: TextStyle(fontSize: 24)),
+            SizedBox(height: 24),
 
+            ElevatedButton(
+              onPressed: () => Navigator.pushNamed(context, '/forecast'),
+              child: Text("Forecast"),
+            ),
+            SizedBox(height: 12),
+
+            ElevatedButton(
+              onPressed: () => Navigator.pushNamed(context, '/map'),
+              child: Text("Map"),
+            ),
+            SizedBox(height: 12),
+
+            ElevatedButton(
+              onPressed: () => Navigator.pushNamed(context, '/theme'),
+              child: Text("Themes"),
+            ),
+            SizedBox(height: 12),
+
+            ElevatedButton(
+              onPressed: () => Navigator.pushNamed(context, '/community'),
+              child: Text("Community"),
+            ),
+            SizedBox(height: 12),
+
+            ElevatedButton(
+              onPressed: () => Navigator.pushNamed(context, '/alerts'),
+              child: Text("Alerts"),
+            ),
+          ],
         ),
       ),
     );
   }
 }
+
 
 class ForecastScreen extends StatefulWidget {
   @override
@@ -214,8 +305,27 @@ class ThemeSettingsScreen extends StatelessWidget {
   }
 }
 
-class CommunityScreen extends StatelessWidget {
+class CommunityScreen extends StatefulWidget {
+  @override
+  _CommunityScreenState createState() => _CommunityScreenState();
+}
+
+class _CommunityScreenState extends State<CommunityScreen> {
   final TextEditingController _reportController = TextEditingController();
+
+  void _submitReport() {
+    if (_reportController.text.isNotEmpty) {
+      FirebaseFirestore.instance.collection('reports').add({
+        'message': _reportController.text,
+        'timestamp': Timestamp.now(),
+      });
+      _reportController.clear();
+    }
+  }
+
+  void _deleteReport(String docId) {
+    FirebaseFirestore.instance.collection('reports').doc(docId).delete();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -227,41 +337,52 @@ class CommunityScreen extends StatelessWidget {
             padding: EdgeInsets.all(12),
             child: TextField(
               controller: _reportController,
-              decoration: InputDecoration(labelText: "What's the weather like?", border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                labelText: "What's the weather like?",
+                border: OutlineInputBorder(),
+              ),
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              if (_reportController.text.isNotEmpty) {
-                FirebaseFirestore.instance.collection('reports').add({
-                  'message': _reportController.text,
-                  'timestamp': Timestamp.now(),
-                });
-              }
-            },
+            onPressed: _submitReport,
             child: Text("Submit"),
           ),
           Expanded(
             child: StreamBuilder(
-              stream: FirebaseFirestore.instance.collection('reports').orderBy('timestamp', descending: true).snapshots(),
+              stream: FirebaseFirestore.instance
+                  .collection('reports')
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
+                if (!snapshot.hasData)
+                  return Center(child: CircularProgressIndicator());
+
                 final docs = snapshot.data!.docs;
+
                 return ListView.builder(
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
-                    final report = docs[index]['message'];
-                    return ListTile(title: Text(report));
+                    final doc = docs[index];
+                    final message = doc['message'];
+
+                    return ListTile(
+                      title: Text(message),
+                      trailing: IconButton(
+                        icon: Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _deleteReport(doc.id),
+                      ),
+                    );
                   },
                 );
               },
             ),
-          )
+          ),
         ],
       ),
     );
   }
 }
+
 
 class AlertsScreen extends StatefulWidget {
   @override
