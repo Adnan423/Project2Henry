@@ -246,7 +246,8 @@ class _ForecastScreenState extends State<ForecastScreen> {
 }
 
 class MapScreen extends StatelessWidget {
-  final mapboxAccessToken = 'pk.eyJ1IjoiYWRuYW40MjMiLCJhIjoiY21hN2psbWtoMGdhbzJpb2J4dzkydnAyMSJ9.eixXQHgUPUzVzfxgRqLgXA';
+  final mapboxAccessToken =
+      'pk.eyJ1IjoiYWRuYW40MjMiLCJhIjoiY21hN2psbWtoMGdhbzJpb2J4dzkydnAyMSJ9.eixXQHgUPUzVzfxgRqLgXA';
   final mapboxStyleId = 'mapbox/streets-v11';
 
   @override
@@ -254,11 +255,13 @@ class MapScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text("Weather Map")),
       body: FlutterMap(
+        mapController: MapController(),
         options: MapOptions(
-          center: LatLng(33.7490, -84.3880), // Atlanta
-          zoom: 10,
+          initialCenter: LatLng(33.7490, -84.3880), // Atlanta
+          initialZoom: 10,
         ),
         children: [
+          // Mapbox base layer
           TileLayer(
             urlTemplate:
             'https://api.mapbox.com/styles/v1/$mapboxStyleId/tiles/256/{z}/{x}/{y}@2x?access_token=$mapboxAccessToken',
@@ -267,11 +270,23 @@ class MapScreen extends StatelessWidget {
               'styleId': mapboxStyleId,
             },
           ),
+
+          // RainViewer radar overlay with proper opacity
+          TileLayer(
+            urlTemplate:
+            'https://tilecache.rainviewer.com/v2/radar/latest/256/{z}/{x}/{y}/2/1_1.png',
+            tileProvider: NetworkTileProvider(),
+            tileDisplay: TileDisplay.fadeIn(
+              duration: Duration(milliseconds: 250),
+            ),
+          ),
         ],
       ),
     );
   }
 }
+
+
 class ThemeSettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
