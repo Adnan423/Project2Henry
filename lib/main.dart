@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -102,77 +101,86 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String temperatureText = "Loading...";
-  String iconUrl = '';
-  String city = 'Atlanta';
+  late Future<Map<String, dynamic>?> weatherFuture;
+  final String city = 'Atlanta';
 
   @override
   void initState() {
     super.initState();
-    loadWeather();
-  }
-
-  void loadWeather() async {
-    final weather = await fetchCurrentWeather();
-    if (weather != null) {
-      setState(() {
-        temperatureText = "${weather['temp']}°F – $city";
-        iconUrl = weather['icon'];
-      });
-    }
+    weatherFuture = fetchCurrentWeather();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Weatherly")),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (iconUrl.isNotEmpty)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Image.network(iconUrl, width: 40),
-                  SizedBox(width: 8),
-                  Text(temperatureText, style: TextStyle(fontSize: 24)),
-                ],
-              )
-            else
-              Text(temperatureText, style: TextStyle(fontSize: 24)),
-            SizedBox(height: 24),
-
-            ElevatedButton(
-              onPressed: () => Navigator.pushNamed(context, '/forecast'),
-              child: Text("Forecast"),
+      body: Stack(
+        children: [
+          // Background Image
+          Positioned.fill(
+            child: Image.asset(
+              'assets/gg.webp',
+              fit: BoxFit.cover,
             ),
-            SizedBox(height: 12),
+          ),
 
-            ElevatedButton(
-              onPressed: () => Navigator.pushNamed(context, '/map'),
-              child: Text("Map"),
-            ),
-            SizedBox(height: 12),
+          // Foreground content with padding
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "Weatherly",
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF00BFCF),
+                  ),
+                ),
+                SizedBox(height: 16),
 
-            ElevatedButton(
-              onPressed: () => Navigator.pushNamed(context, '/theme'),
-              child: Text("Themes"),
-            ),
-            SizedBox(height: 12),
+                FutureBuilder<Map<String, dynamic>?>(
+                  future: weatherFuture,
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return Text("Loading...",
+                          style: TextStyle(fontSize: 24, color: Colors.white));
+                    }
+                    final weather = snapshot.data!;
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.network(weather['icon'], width: 40),
+                        SizedBox(width: 8),
+                        Text(
+                          "${weather['temp']}°F – $city",
+                          style: TextStyle(fontSize: 24, color: Colors.white),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                SizedBox(height: 24),
 
-            ElevatedButton(
-              onPressed: () => Navigator.pushNamed(context, '/community'),
-              child: Text("Community"),
+                // Buttons
+                for (var route in [
+                  ['Forecast', '/forecast'],
+                  ['Map', '/map'],
+                  ['Themes', '/theme'],
+                  ['Community', '/community'],
+                  ['Alerts', '/alerts'],
+                ])
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pushNamed(context, route[1]),
+                      child: Text(route[0]),
+                    ),
+                  ),
+              ],
             ),
-            SizedBox(height: 12),
-
-            ElevatedButton(
-              onPressed: () => Navigator.pushNamed(context, '/alerts'),
-              child: Text("Alerts"),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -201,9 +209,6 @@ class _ForecastScreenState extends State<ForecastScreen> {
 
     try {
       final response = await http.get(Uri.parse(url));
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
@@ -217,33 +222,51 @@ class _ForecastScreenState extends State<ForecastScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Forecast")),
-      body: forecastList.isEmpty
-          ? Center(child: CircularProgressIndicator())
-          : ListView.builder(
-        itemCount: forecastList.length,
-        itemBuilder: (context, index) {
-          final day = forecastList[index];
-          final date = day['date'];
-          final condition = day['day']['condition']['text'];
-          final iconUrl = "https:${day['day']['condition']['icon']}";
-          final tempMin = day['day']['mintemp_f'];
-          final tempMax = day['day']['maxtemp_f'];
+      body: Stack(
+        children: [
+          // Background image
+          Positioned.fill(
+            child: Image.asset(
+              'assets/forecast2.png',
+              fit: BoxFit.cover,
+            ),
+          ),
+          // Content
+          forecastList.isEmpty
+              ? Center(child: CircularProgressIndicator())
+              : ListView.builder(
+            itemCount: forecastList.length,
+            itemBuilder: (context, index) {
+              final day = forecastList[index];
+              final date = day['date'];
+              final condition = day['day']['condition']['text'];
+              final iconUrl = "https:${day['day']['condition']['icon']}";
+              final tempMin = day['day']['mintemp_f'];
+              final tempMax = day['day']['maxtemp_f'];
 
-          return ListTile(
-            leading: Image.network(iconUrl, width: 40),
-            title: Text("$date – $tempMin°F to $tempMax°F"),
-            subtitle: Text(condition),
-          );
-        },
+              return ListTile(
+                leading: Image.network(iconUrl, width: 40),
+                title: Text(
+                  "$date – $tempMin°F to $tempMax°F",
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: Text(
+                  condition,
+                  style: TextStyle(color: Colors.white70),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
 }
+
 
 class MapScreen extends StatelessWidget {
   final mapboxAccessToken =
@@ -286,32 +309,47 @@ class MapScreen extends StatelessWidget {
   }
 }
 
-
 class ThemeSettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Theme Settings')),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Stack(
         children: [
-          ListTile(
-            leading: Icon(Icons.wb_sunny, color: Colors.orange),
-            title: Text("Sunny Theme"),
-            onTap: () => themeNotifier.value = sunnyTheme,
+          Positioned.fill(
+            child: Image.asset(
+              'assets/theme.webp',
+              fit: BoxFit.cover,
+            ),
           ),
-          ListTile(
-            leading: Icon(Icons.grain, color: Colors.blue[900]),
-            title: Text("Rainy Theme"),
-            onTap: () => themeNotifier.value = rainyTheme,
-          ),
-          SizedBox(height: 40),
-          Center(
-            child: ElevatedButton(
-              child: Text('Upload Custom Theme'),
-              onPressed: () {
-                // Future feature placeholder
-              },
+
+          // Content overlay
+          SingleChildScrollView(
+            child: Container(
+              height: MediaQuery.of(context).size.height,
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ListTile(
+                    leading: Icon(Icons.wb_sunny, color: Colors.orange),
+                    title: Text("Sunny Theme"),
+                    onTap: () => themeNotifier.value = sunnyTheme,
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.grain, color: Colors.blue[900]),
+                    title: Text("Rainy Theme"),
+                    onTap: () => themeNotifier.value = rainyTheme,
+                  ),
+                  Spacer(),
+                  Center(
+                    child: ElevatedButton(
+                      onPressed: () {},
+                      child: Text('Upload Custom Theme'),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -319,6 +357,7 @@ class ThemeSettingsScreen extends StatelessWidget {
     );
   }
 }
+
 
 class CommunityScreen extends StatefulWidget {
   @override
@@ -346,50 +385,71 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Community Reports")),
-      body: Column(
+      body: Stack(
         children: [
-          Padding(
-            padding: EdgeInsets.all(12),
-            child: TextField(
-              controller: _reportController,
-              decoration: InputDecoration(
-                labelText: "What's the weather like?",
-                border: OutlineInputBorder(),
-              ),
+          // Background image
+          Positioned.fill(
+            child: Image.asset(
+              'assets/comm.jpg',
+              fit: BoxFit.cover,
             ),
           ),
-          ElevatedButton(
-            onPressed: _submitReport,
-            child: Text("Submit"),
-          ),
-          Expanded(
-            child: StreamBuilder(
-              stream: FirebaseFirestore.instance
-                  .collection('reports')
-                  .orderBy('timestamp', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData)
-                  return Center(child: CircularProgressIndicator());
+          // Foreground content
+          SingleChildScrollView(
+            child: Container(
+              height: MediaQuery.of(context).size.height,
+              padding: EdgeInsets.all(12),
+              color: Colors.white.withOpacity(0.85),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _reportController,
+                    decoration: InputDecoration(
+                      labelText: "What's the weather like?",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _submitReport,
+                    child: Text("Submit"),
+                  ),
+                  SizedBox(height: 20),
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('reports')
+                          .orderBy('timestamp', descending: true)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return Center(child: CircularProgressIndicator());
+                        }
 
-                final docs = snapshot.data!.docs;
+                        final docs = snapshot.data!.docs;
 
-                return ListView.builder(
-                  itemCount: docs.length,
-                  itemBuilder: (context, index) {
-                    final doc = docs[index];
-                    final message = doc['message'];
+                        return ListView.builder(
+                          shrinkWrap: true,
+                          physics: NeverScrollableScrollPhysics(),
+                          itemCount: docs.length,
+                          itemBuilder: (context, index) {
+                            final doc = docs[index];
+                            final message = doc['message'];
 
-                    return ListTile(
-                      title: Text(message),
-                      trailing: IconButton(
-                        icon: Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _deleteReport(doc.id),
-                      ),
-                    );
-                  },
-                );
-              },
+                            return ListTile(
+                              title: Text(message),
+                              trailing: IconButton(
+                                icon: Icon(Icons.delete, color: Colors.red),
+                                onPressed: () => _deleteReport(doc.id),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -397,7 +457,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 }
-
 
 class AlertsScreen extends StatefulWidget {
   @override
@@ -410,26 +469,46 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   void _updateAlerts() {
     print("Rain alert: $rainAlert, Temp alert: $tempAlert");
-    // Example: You can push to Firestore or use Firebase Messaging here
+    // Example: Push to Firestore or Firebase Messaging
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Personal Alerts")),
-      body: Column(
+      body: Stack(
         children: [
-          SwitchListTile(
-            title: Text("Alert me if it rains tomorrow"),
-            value: rainAlert,
-            onChanged: (val) => setState(() => rainAlert = val),
+          // Background image
+          Positioned.fill(
+            child: Image.asset(
+              'assets/noti.jpg', // Make sure it's listed in pubspec.yaml
+              fit: BoxFit.cover,
+            ),
           ),
-          SwitchListTile(
-            title: Text("Alert me if temp > 90°F"),
-            value: tempAlert,
-            onChanged: (val) => setState(() => tempAlert = val),
+          // Foreground content
+          Container(
+            color: Colors.white.withOpacity(0.85), // Optional overlay for readability
+            child: ListView(
+              padding: EdgeInsets.all(16),
+              children: [
+                SwitchListTile(
+                  title: Text("Alert me if it rains tomorrow"),
+                  value: rainAlert,
+                  onChanged: (val) => setState(() => rainAlert = val),
+                ),
+                SwitchListTile(
+                  title: Text("Alert me if temp > 90°F"),
+                  value: tempAlert,
+                  onChanged: (val) => setState(() => tempAlert = val),
+                ),
+                SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _updateAlerts,
+                  child: Text("Save Alerts"),
+                ),
+              ],
+            ),
           ),
-          ElevatedButton(onPressed: _updateAlerts, child: Text("Save Alerts"))
         ],
       ),
     );
